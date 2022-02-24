@@ -37,26 +37,50 @@ class Board {
         if (this.turn == 'x') {
             this.turn = 'o';
         }
-        else {
+        else if (this.turn == 'o') {
             this.turn = 'x';
+        } else {
+            console.log('*** switchturn error ***')
         }
     }
 
     checkWin() {
-        // Returns 'x' or 'o' if either won, null otherwise.
+        // Returns 'x' or 'o' if either won, 'd' if draw, null otherwise
         let square1, square2, square3;
 
+        //Check for win
         for (let line of this.winningLines) {
             square1 = this.board[line[0]];
             square2 = this.board[line[1]];
             square3 = this.board[line[2]];
 
             if (square1 != null && (square1 == square2) && (square2 == square3)) {
-                return square1
+                return square1;
             }
         }
-        console.log('no winner found');
-        return null;
+
+        //Check for draw. If we meet an empty square, it's in progess. else, draw.
+        for (let i=0; i<9; i++){
+            if (this.board[i] == null) {
+                return null;
+            }
+        }
+
+        return 'd';
+    }
+
+    evaluate() {
+        let gameState = this.checkWin();
+
+        if (gameState == 'x') {
+            return 10;
+        } else if (gameState == 'o') {
+            return -10;
+        } else if (gameState == 'd') {
+            return 0;
+        } else {
+            return undefined;
+        }
     }
 
     endGame(winner) {
@@ -64,6 +88,15 @@ class Board {
         this.winner = winner;
         console.log('game over.', this.winner, 'wins!');
         showSnackbar();
+    }
+
+    undoMove(move) {
+        if (this.board[move] != null) {
+            this.board[move] = null;
+            this.switchTurn();
+        } else {
+            console.log('square', move, 'is already empty!');
+        }
     }
 
     makeMove(move) {
@@ -95,8 +128,21 @@ class Board {
 
     CPUMove() {
         if (this.inProgress){
-            this.randomMove();
-            //this.miniMax();
+            //let move = this.easyMove();
+            let move = this.hardMove();
+            this.makeMove(move);
+        }
+    }
+
+    easyMove() {
+        return this.randomMove();
+    }
+
+    hardMove() {
+        if (this.board[4] == null) {
+            return 4;
+        } else {
+            return this.minimax('o')[1]
         }
     }
 
@@ -105,9 +151,62 @@ class Board {
         while (true) {
             choice = Math.floor(Math.random() * 9)
             if (this.board[choice] == null) {
-                this.makeMove(choice);
-                break;
+                return choice;
             }
+        }
+    }
+
+    minimax(player) { //player => best score, best move
+
+        // if terminal node then return evaluation
+        let evaluation = this.evaluate();
+
+        if (evaluation != undefined) {
+            return [evaluation, undefined];
+        }
+
+        let result, best_score, best_move;
+        best_move = 'u';
+        // if maximising_player then
+        if (player == 'x') {
+            // best_score = -inf
+            best_score = -100;
+
+            // for each child of node do
+            for (let i=0; i<9; i++) {
+                if (this.board[i]==null){
+                    // best_score = max(best_score, minimax(minimising_player, depth-1))
+                    this.makeMove(i);
+                    result = this.minimax('o');
+                    this.undoMove(i);
+                    if (result[0] > best_score) {
+                        best_score = result[0];
+                        best_move = i;
+                    }
+                }
+            }
+            // return best_score
+            return [best_score, best_move];
+        } else {
+        // else *minimising_player* then
+            // best_score = inf
+            best_score = 100;
+
+            // for each child of node do
+            for (let i=0; i<9; i++) {
+                if (this.board[i]==null){
+                    // best_score = min(best_score, minimax(maximising_player, depth-1))
+                    this.makeMove(i);
+                    result = this.minimax('x');
+                    this.undoMove(i);
+                    if (result[0] < best_score) {
+                        best_score = result[0];
+                        best_move = i;
+                    }
+                }
+            }
+            //return best_score
+            return [best_score, best_move];
         }
     }
 
@@ -156,3 +255,4 @@ function hideSnackbar() {
 
 createListeners();
 let myBoard = new Board();
+displayBoard();
